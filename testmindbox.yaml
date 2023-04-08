@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 16 # 4 пода для каждой из трех зон
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: 0.5 # задаем максимальное потребление CPU на под
+            memory: 128Mi # задаем максимальное потребление памяти на под
+          requests:
+            cpu: 0.1 # задаем начальное потребление CPU на под
+            memory: 128Mi # задаем начальное потребление памяти на под
+        readinessProbe:
+          httpGet:
+            path: /healthz # проверяем, что приложение готово к обслуживанию
+            port: 8080
+          initialDelaySeconds: 10 # начинаем проверку через 10 секунд после запуска пода
+          periodSeconds: 5 # повторяем проверку каждые 5 секунд
+        livenessProbe:
+          httpGet:
+            path: /healthz # проверяем, что приложение живо
+            port: 8080
+          initialDelaySeconds: 60 # начинаем проверку через 60 секунд после запуска пода
+          periodSeconds: 20 # повторяем проверку каждые 20 секунд
+        env:
+        - name: MY_APP_ENV_VAR
+          value: my-value # задаем переменную окружения для приложения
+      nodeSelector:
+        beta.kubernetes.io/type: worker # выбираем только worker-узлы
+      tolerations:
+      - key: "node-role.kubernetes.io/worker" # позволяем поду запускаться на узлах с любыми тэгами
+        operator: "Exists"
+        effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - my-app
+            topologyKey: "kubernetes.io/hostname" # размещаем поды на разных узлах для обеспечения отказоустойчивости
+
