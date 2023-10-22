@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-app
+  name: my-app  # Название деплоймента
   labels:
-    app: my-app
+    app: my-app  # Лейблы для идентификации
 spec:
   replicas: 4  # Начальное количество реплик
   selector:
     matchLabels:
-      app: my-app
+      app: my-app  # Селектор для выбора подов по лейблам
   template:
     metadata:
       labels:
-        app: my-app
+        app: my-app  # Лейблы для подов
     spec:
       containers:
       - name: my-app
-        image: my-app:latest
+        image: my-app:latest  # Docker образ приложения
         ports:
-        - containerPort: 8080
+        - containerPort: 8080  # Порт, на котором приложение слушает
         resources:
           limits:
             cpu: "0.5"  # Максимальное потребление CPU на под
@@ -28,25 +28,25 @@ spec:
             memory: "128Mi"  # Начальное потребление памяти на под
         readinessProbe:
           httpGet:
-            path: /healthz
+            path: /healthz  # Путь для проверки готовности приложения
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
+          initialDelaySeconds: 10  # Задержка перед первой проверкой
+          periodSeconds: 5  # Периодичность проверок
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /healthz  # Путь для проверки живости приложения
             port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 20
+          initialDelaySeconds: 60  # Задержка перед первой проверкой
+          periodSeconds: 20  # Периодичность проверок
         env:
         - name: MY_APP_ENV_VAR
-          value: my-value
+          value: my-value  # Переменная окружения приложения
       nodeSelector:
-        beta.kubernetes.io/type: worker
+        beta.kubernetes.io/type: worker  # Выбор только worker узлов
       tolerations:
       - key: "node-role.kubernetes.io/worker"
         operator: "Exists"
-        effect: "NoSchedule"
+        effect: "NoSchedule"  # Позволяет поду запускаться на узлах с любыми тэгами
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -56,8 +56,9 @@ spec:
                 operator: In
                 values:
                 - my-app
-            topologyKey: "kubernetes.io/hostname"
----
+            topologyKey: "kubernetes.io/hostname"  # Размещаем поды на разных узлах для отказоустойчивости
+
+# HPA (Horizontal Pod Autoscaler) для автоматического масштабирования
 apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -66,7 +67,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: my-app
+    name: my-app  # Ссылка на целевой деплоймент
   minReplicas: 2  # Минимальное количество реплик
   maxReplicas: 16  # Максимальное количество реплик
   metrics:
@@ -74,7 +75,8 @@ spec:
     resource:
       name: cpu
       targetAverageUtilization: 50  # Целевая загрузка CPU в процентах
----
+
+# CronJob для планирования масштабирования в определенное время
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
@@ -87,6 +89,6 @@ spec:
         spec:
           containers:
           - name: scaler
-            image: your-scaler-image:latest  # Образ с утилитой для изменения количества реплик
+            image: your-scaler-image:latest  # Docker образ с утилитой для изменения количества реплик
             command: ["/bin/sh"]
             args: ["-c", "kubectl scale deployment my-app --replicas=2"]  # Уменьшить количество реплик до 2
