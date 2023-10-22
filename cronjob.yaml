@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 4  # Начальное количество реплик
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "0.5"  # Максимальное потребление CPU на под
+            memory: "128Mi"  # Максимальное потребление памяти на под
+          requests:
+            cpu: "0.1"  # Начальное потребление CPU на под
+            memory: "128Mi"  # Начальное потребление памяти на под
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 20
+        env:
+        - name: MY_APP_ENV_VAR
+          value: my-value
+      nodeSelector:
+        beta.kubernetes.io/type: worker
+      tolerations:
+      - key: "node-role.kubernetes.io/worker"
+        operator: "Exists"
+        effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - my-app
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2  # Минимальное количество реплик
+  maxReplicas: 16  # Максимальное количество реплик
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 50  # Целевая загрузка CPU в процентах
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: my-app-scheduled-scaling
+spec:
+  schedule: "0 0 * * *"  # Каждый день в 00:00 UTC
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: scaler
+            image: your-scaler-image:latest  # Образ с утилитой для изменения количества реплик
+            command: ["/bin/sh"]
+            args: ["-c", "kubectl scale deployment my-app --replicas=2"]  # Уменьшить количество реплик до 2

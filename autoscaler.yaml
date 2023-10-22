@@ -1,0 +1,23 @@
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2  # Минимальное количество реплик
+  maxReplicas: 16  # Максимальное количество реплик
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 50  # Целевая загрузка CPU в процентах
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Период стабилизации перед масштабированием вниз (в секундах)
+      policies:
+      - type: Pods
+        value: 1  # Минимальное количество подов, которые не могут быть удалены
+        periodSeconds: 300  # Период, в течение которого под не может быть удален после создания (в секундах)
